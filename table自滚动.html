@@ -1,0 +1,84 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+    <title>table在div内自滚动（上下）</title>
+</head>
+
+<body>
+<div style="border:1px solid red;">
+    <table width="100%"; border="1px solid red;" cellspacing="0" style="border-collapse:collapse;">
+        <thead>
+        <tr>
+            <td style="background:blue;" width="10%">sds</td>
+            <td style="background:blue;" width="30%">dfd</td>
+            <td style="background:blue;" width="30%">ds</td>
+            <td style="background:blue;" width="30%">fs</td>
+        </tr>
+        </thead>
+    </table>
+</div>
+<div id="show" style="overflow-x:scroll;overflow-y:hidden;height:100px;border:1px solid red;">
+    <table width="100%"  border="1px solid red;" cellspacing="0" style="border-collapse:collapse;">
+
+        <tbody>
+        <tr>
+            <td width="10%">sds</td>
+            <td width="30%">dfd</td>
+            <td width="30%">ds</td>
+            <td width="30%">fs</td>
+        </tr>
+        <tr>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+        </tr>
+        <tr>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+            <td>所发生的放松地方三等份</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<script>
+    function marques(lh,speed,delay){
+        var intervalFunction;
+        var oHeight = 100; /** div的高度 **/
+        var scrollDiv=document.getElementById("show");
+        var preTop = 0;
+        scrollDiv.scrollTop = 0;
+        //var p=false;
+
+        function start(){
+            intervalFunction=setInterval(scrolling,speed);
+        };
+
+        function scrolling(){
+            if( scrollDiv.scrollHeight-scrollDiv.offsetHeight<scrollDiv.scrollTop){
+                preTop = scrollDiv.scrollTop;
+                scrollDiv.scrollTop+=1;
+                if(preTop >= scrollDiv.scrollHeight || preTop==scrollDiv.scrollTop){
+                    scrollDiv.scrollTop = 0;
+                }
+            }else{
+                // clearInterval(intervalFunction);    清除定时器
+                // setTimeout(start,delay);    继续定时器
+            }
+            scrollDiv.scrollTop+=1;
+            //mouse事件只有写在方法内才能保证over和out的scrollTop高度一致性
+            scrollDiv.onmouseover=function() {clearInterval(intervalFunction)};
+            scrollDiv.onmouseout=function() {intervalFunction=setInterval(scrolling,speed)};
+        };
+
+        setTimeout(start,delay);
+    };
+    marques(50,100,1000);
+    /**marquees(一次滚动高度,速度,停留时间);**/
+</script>
+
+</body>
+
+</html>
