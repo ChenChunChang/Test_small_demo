@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+<div class="cs" id="cs">
+
+</div>
+</body>
+<script src="./js/jquery1.42.min.js"></script>
+<script>
+    $.ajax({
+        url:'xml.xml',
+        type:'get',
+        dataType:'xml',
+        success:function (data) {
+            console.log(data);
+            var $re = $(data).find("note");
+            console.log($re.children("to").text());
+            $("#cs").html($re.children("heading").text());
+        }
+    })
+</script>
+</html>
