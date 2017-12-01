@@ -4,19 +4,12 @@
  * @Author: xuguanlong
  * @Date:   2015-11-03 16:10:24
  * @Last Modified by:   xuguanlong
- * @Last Modified time: 2015-11-09 15:18:00
+ * @Last Modified time: 2015-11-09 15:41:26
  */
 /**
  * 通用函数模块
  * @Author: xuguanlong
  */
-
-// 测试时，请把ak和serviceId写在这里，或是写在地址栏中
-// file:///D:/web%20demo%20v2.0/index.html?i=12345&k=FGHJFGHJGHJGH
-
-var Test_ak = 'k9nsYVmcngKmRd7dk92RX0G9k2m0zQuW';
-var ServiceId = '12345';
-
 define('track/util', function () {
     var reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
     /*RGB颜色转换为16进制*/
@@ -179,11 +172,6 @@ define('track/message', function () {
  */
 define('track/urls', [], function () {
     return {
-        /**
-         * 需要注意的是 jquery的ajax 请求需要在web server环境下才能获取数据 要不然会出现XMLHttpRequest cannot load 错误
-         * 获取鹰眼服务数据 需要开发者自己实现后台服务(php java都可以只要能提供webservice服务 和web demo前端文件放在一个域名目录下(解决ajax跨域问题)，后台服务负责请求鹰眼服务
-         * 前端js负责与后台服务交互数据 p.s:需要ak参数
-         */
         get: function (url, params, success, before, fail, after) {
             if (before) {
                 before();
@@ -194,24 +182,6 @@ define('track/urls', [], function () {
                 url: url,
                 data: params,
                 dataType: 'json',
-                success: success,
-                error: fail,
-                complete: after
-            });
-        },
-        /**
-         * 添加jsonp接口，实现跨域请求数据
-         */
-        jsonp: function (url, params, success, before, fail, after) {
-            if (before) {
-                before();
-            }
-            fail = fail || function () {};
-            after = after || function () {};
-            $.ajax({
-                url: url,
-                data: params,
-                dataType: 'jsonp',
                 success: success,
                 error: fail,
                 complete: after
@@ -278,9 +248,9 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
     var curTrack; //当前选中的track canvas浮动层绘制其属性
     var selTrack; //已选中的track 用于轨迹回放的时候判断当前的track
     var _colors = {}; //存储已经用了的color
-    // 是否获取纠偏轨迹点 
-    var is_processed = 0;
-    var pageSize = 14;
+    // 是否获取纠偏轨迹点 暂时用不着 忽略
+    var is_processed = false;
+
     /**
      * [ctrlSlide 面板收起展开]
      * @Author: xuguanlong
@@ -353,7 +323,6 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             $('.chart-wrap').show();
             $('#time_span').html(showTime);
             $('.chart-ctrl').show();
-            $('.jiupian').show();
         } else {
             type = 1;
             $('#track-btn').addClass('active');
@@ -399,7 +368,6 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             $('#time_span').removeClass('show');
             $('.chart-wrap').hide();
             $('.chart-ctrl').hide();
-            $('.jiupian').hide();
             if (playing) {
                 playing = false;
                 clearInterval(playTimer);
@@ -441,63 +409,26 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             left = 0;
             ctrPlayFrame();
         }
-        loadSelectedTrackHistory();
-    }
-
-    // 过滤轨迹数据，去除空数据
-    function filtrationTrackHistory(pois) {
-        var newPois = [];
-        var pitem;
-        for (var i = 0, l = pois.length; i < l; i++) {
-            pitem = pois[i];
-            if (pitem.length < 3) {
-                break;
-            }
-            if (pitem[0] === 0 || pitem[1] === 0) {
-                break;
-            }
-            newPois.push(pitem);
-        }
-
-        return newPois;
-    }
-
-    function formatHistoryPoints(res) {
-        var points = res.points;
-        var poidata = [];
-        var temp;
-        for (var i = 0, l = points.length; i < l; i++) {
-            temp = points[i].location.concat(points[i].loc_time);
-            poidata.push(temp);
-        }
-        res.pois = poidata;
-        return res;
-    }
-
-    function loadSelectedTrackHistory() {
-        var start_time = timeLineControl.start_time = Util.js_strto_time(startTime);
-        var end_time = timeLineControl.end_time = Util.js_strto_time(endTime);
-        var tmpSize = 0;
         // 在已选的track中 循环加载
         for (id in selectedTracks_2) {
             var track = selectedTracks_2[id];
             var li = $('#seled-track-' + id);
             var cbks = {
                 success: function (res) {
-                    res = formatHistoryPoints(res);
-                    var entity_name = res.entity_name;
-
-                    var li = $('#seled-track-' + entity_name);
+                    var track_id;
+                    for (i in res) {
+                        track_id = i;
+                    }
+                    var li = $('#seled-track-' + track_id);
                     li.find('.pro-bar').removeClass('progressing');
-                    var track = selectedTracks_2[entity_name];
-                    track.pois = res.pois;
+                    var track = selectedTracks_2[track_id];
+                    track.pois = res[track_id] && res[track_id].pois;
                     delete track.index;
                     track.aniLayer && track.aniLayer.clearAll();
                     // 无数据
                     if (!track.pois || track.pois.length === 0) {
                         track.barBgColor = Util.colors[Util.colors.length - 1];
                     } else {
-                        track.pois = filtrationTrackHistory(track.pois);
                         track.barBgColor = track.colors[0].colorRgba(1);
                     }
                     li.find('.pro-bar').css('background-color', track.barBgColor);
@@ -580,7 +511,7 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             if (event.keyCode == '32' && type === 2 && playTimer) {
                 var li;
                 if (selTrack) {
-                    li = $('#seled-track-' + selTrack.entity_name);
+                    li = $('#seled-track-' + selTrack.track_id);
                 }
                 if (playing) {
                     playing = false;
@@ -728,119 +659,77 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 }
             });
             trackListPanel.delegate('li', 'click', function (e) {
-                var entity_name = $(this).attr('data-id');
+                var track_id = $(this).attr('data-id');
+                var track_name = $(this).attr('data-name');
                 var state = $(this).attr('data-state');
-                console.log('track list:', curIndex)
-                if (!selectedTracks.hasOwnProperty(entity_name)) {
-                    me.selectTrack(entity_name, entity_name, state, $(e.target).hasClass('check-box'), curIndex);
+                if (!selectedTracks.hasOwnProperty(track_id)) {
+                    me.selectTrack(track_id, track_name, state, $(e.target).hasClass('check-box'));
                 } else {
-                    curTrack = selectedTracks[entity_name];
+                    curTrack = selectedTracks[track_id];
                     if ($(e.target).hasClass('check-box')) {
-                        me.selectTrack(entity_name, entity_name, state, $(e.target).hasClass('check-box'), curIndex);
+                        me.selectTrack(track_id, track_name, state, $(e.target).hasClass('check-box'));
                     } else {
-                        map.centerAndZoom(selectedTracks[entity_name].point, 13);
+                        map.centerAndZoom(selectedTracks[track_id].point, 13);
                     }
                 }
                 return false;
             });
             selTracksPanel.delegate('li', 'click', function (e) {
-                var entity_name = $(this).attr('data-id');
+                var track_id = $(this).attr('data-id');
                 var playClicked = $(e.target).hasClass('play') || $(e.target).hasClass('fa');
-                var entity_name = $(this).attr('data-name');
+                var track_name = $(this).attr('data-name');
                 var li = $(this);
                 var start_time = Util.js_strto_time(startTime);
                 var end_time = Util.js_strto_time(endTime);
                 if (playClicked) {
-                    if (playing && selTrack && selTrack.entity_name === entity_name) {
+                    if (playing && selTrack && selTrack.track_id === track_id) {
                         playing = false;
                         li.find('.fa').removeClass('fa-pause').addClass('fa-play');
                         return false;
                     }
-                    if (playTimer && selTrack && selTrack.entity_name === entity_name && !playing) {
+                    if (playTimer && selTrack && selTrack.track_id === track_id && !playing) {
                         playing = true;
                         li.find('.fa').removeClass('fa-play').addClass('fa-pause');
                         return false;
                     }
-                    if (selTrack && selTrack.entity_name !== entity_name) {
+                    if (selTrack && selTrack.track_id !== track_id) {
                         clearInterval(playTimer);
                         playTimer = null;
                         playing = false;
                         $('.process').find('.fa').removeClass('fa-pause').addClass('fa-play');
                     }
                 }
-                me.selectTrack_2(entity_name, entity_name, $(e.target).hasClass('check-box'));
-                var track = selectedTracks_2[entity_name];
+                me.selectTrack_2(track_id, track_name, $(e.target).hasClass('check-box'));
+                var track = selectedTracks_2[track_id];
                 $('.seled-track').removeClass('selected');
                 li.addClass('selected');
                 var playClicked = $(e.target).hasClass('play') || $(e.target).hasClass('fa');
-
-                var formatHistoryPoints = function (res) {
-                    var points = res.points;
-                    var poidata = [];
-                    var temp;
-                    for (var i = 0, l = points.length; i < l; i++) {
-                        temp = points[i].location.concat(points[i].loc_time);
-                        poidata.push(temp);
-                    }
-                    res.pois = poidata;
-                    return res;
-                };
                 if (track) {
                     var cbks = {
                         success: function (res) {
-                            res = formatHistoryPoints(res);
-                            var entity_name = res.entity_name;
-                            var li = $('#seled-track-' + entity_name);
+                            var li = $('#seled-track-' + track_id);
                             li.find('.pro-bar').removeClass('progressing');
-                            selectedTracks_2[entity_name].pois = res.pois;
-                            delete selectedTracks_2[entity_name].index;
-                            selectedTracks_2[entity_name].aniLayer && selectedTracks_2[entity_name].aniLayer.clearAll();
+                            selectedTracks_2[track_id].pois = res[track_id] && res[track_id].pois;
+                            delete selectedTracks_2[track_id].index;
+                            selectedTracks_2[track_id].aniLayer && selectedTracks_2[track_id].aniLayer.clearAll();
                             // 无数据
-                            selectedTracks_2[entity_name].colors[0] = _colors[entity_name];
-                            if (selectedTracks_2[entity_name].pois.length > 0) {
-                                selectedTracks_2[entity_name].barBgColor = selectedTracks_2[entity_name].colors[0].colorRgba(1);
-                                li.find('.pro-bar').css('background-color', selectedTracks_2[entity_name].barBgColor);
+                            selectedTracks_2[track_id].colors[0] = _colors[track_id];
+                            if (selectedTracks_2[track_id].pois.length > 0) {
+                                selectedTracks_2[track_id].barBgColor = selectedTracks_2[track_id].colors[0].colorRgba(1);
+                                li.find('.pro-bar').css('background-color', selectedTracks_2[track_id].barBgColor);
                             } else {
-                                selectedTracks_2[entity_name].barBgColor = li.find('.pro-bar').css('background-color');
+                                selectedTracks_2[track_id].barBgColor = li.find('.pro-bar').css('background-color');
                             }
 
-                            selectedTracks_2[entity_name].initTravels();
-                            selectedTracks_2[entity_name].drawTravels({
+                            selectedTracks_2[track_id].initTravels();
+                            selectedTracks_2[track_id].drawTravels({
                                 pt: true
                             });
-							
-							var activeTime = selectedTracks_2[entity_name].activeTime;
-                            if (activeTime == 0) {
-                                li.find('.pro-bar').css('width', '0px');
-                            } else if (activeTime <= 1 * 60 * 60) {
-                                li.find('.pro-bar').css('width', '10px');
-                            } else if ((activeTime > 1 * 60 * 60) && (activeTime <= 2 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '20px');
-                            } else if ((activeTime > 2 * 60 * 60) && (activeTime <= 3 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '30px');
-                            } else if ((activeTime > 3 * 60 * 60) && (activeTime <= 4 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '40px');
-                            } else if ((activeTime > 4 * 60 * 60) && (activeTime <= 5 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '50px');
-                            } else if ((activeTime > 5 * 60 * 60) && (activeTime <= 6 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '60px');
-                            } else if ((activeTime > 6 * 60 * 60) && (activeTime <= 7 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '70px');
-                            } else if ((activeTime > 7 * 60 * 60) && (activeTime <= 8 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '80px');
-                            } else if ((activeTime > 8 * 60 * 60) && (activeTime <= 9 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '90px');
-                            } else if ((activeTime > 9 * 60 * 60) && (activeTime <= 10 * 60 * 60)) {
-                                li.find('.pro-bar').css('width', '100px');
-                            } else if (activeTime > 10 * 60 * 60) {
-                                li.find('.pro-bar').css('width', '110px');
-                            }
-							
-                            selectedTracks_2[entity_name].setViewMap();
-                            timeLineControl.track = selectedTracks_2[entity_name];
+                            selectedTracks_2[track_id].setViewMap();
+                            timeLineControl.track = selectedTracks_2[track_id];
                             timeLineControl.drawTimeLineControl(timeLineControl.startHour, timeLineControl.endHour);
-                            // var start_time = Util.js_date_time(timeLineControl.track.travels[0][0][2]).substr(0, 10);
-                            // startTime = start_time + ' 00:00:00';
+                            var start_time = Util.js_date_time(timeLineControl.track.travels[0][0][2]).substr(0, 10);
+                            startTime = start_time + ' 00:00:00';
                             if (playClicked) {
                                 if (!$('.timeline-ctrl').hasClass('show')) {
                                     $('.timeline-ctrl').addClass('show');
@@ -863,11 +752,11 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                             }, 800)
                         }
                     }
-                    trackModule.loadTrackHistory(track, start_time, end_time, cbks, is_processed, '', curIndex);
+                    trackModule.loadTrackHistory(track, start_time, end_time, cbks, is_processed);
                 } else {
                     $(this).removeClass('selected');
                     if (playing) {
-                        if (selTrack && selTrack.entity_name === entity_name) {
+                        if (selTrack && selTrack.track_id === track_id) {
                             clearInterval(playTimer);
                             playTimer = null;
                             playing = false;
@@ -906,7 +795,7 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             drawer.lineCanvasLayer.addEventListener('draw', function () {
                 drawer.lineCanvasLayer.clearAll();
                 for (var id in selectedTracks_2) {
-                    if (selTrack && selectedTracks_2[id].entity_name == selTrack.entity_name) {
+                    if (selTrack && selectedTracks_2[id].track_id == selTrack.track_id) {
                         selectedTracks_2[id].drawTravels({
                             pt: true
                         });
@@ -936,7 +825,7 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 var track;
                 for (var id in selectedTracks) {
                     if (selectedTracks[id].isPointIn(pt)) {
-                        if (curTrack && curTrack.entity_name === id) {
+                        if (curTrack && curTrack.track_id === id) {
                             return;
                         }
                         curTrack = track = selectedTracks[id];
@@ -967,15 +856,9 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             $('.search-i').click(function () {
                 if (type === 1) {
                     keyWord = me.xssFilter($('#searchKey').val());
-                    // if (keyWord.length === 0) {
-                    //     return;
-                    // }
                     me.loadData(1);
                 } else {
                     keyWord_2 = me.xssFilter($('#searchKey_2').val());
-                    // if (keyWord_2.length === 0) {
-                    //     return;
-                    // }
                     me.loadData_2(1);
                 }
 
@@ -994,18 +877,6 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                         me.drawCharts();
                     }, 800)
                 }
-            });
-            $('.jiupian').click(function () {
-                if (!is_processed) {
-                    is_processed = 1;
-                    $('.jiupian').addClass('selected');
-                    loadSelectedTrackHistory();
-                } else {
-                    is_processed = 0;
-                    $('.jiupian').removeClass('selected');
-                    loadSelectedTrackHistory();
-                }
-                drawer.lineCanvasLayer.clearAll();
             });
             timeLineControl.drawTimeLineControl(0, 24);
             var ctrFlag = false;
@@ -1068,19 +939,17 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
         },
         getTraceDetail: function () {
             var me = this;
-            me._service_id = me.getQueryString('i');
+            me._trace_id = me.getQueryString('i');
             me._ak = me.getQueryString('k');
-			me._service = {};
-			me._service.name = "demo";
             var params = {
-                service_id: me._service_id || ServiceId,
-                ak: me._ak || Test_ak,
-				active_time: Util.js_strto_time(startTime),
+                traceId: me._trace_id,
+                ak: me._ak,
             }
             var sucCbk = function (res) {
                 if (res.status === 0) {
-                    me.actives = res.total;
-                    traceName.html(me._service.name);
+                    me._trace = res.service;
+                    me.actives = res.actives;
+                    traceName.html(me._trace.name);
                     me.loadData(curIndex);
                 } else {
                     tip.html(message[res.status]);
@@ -1088,26 +957,20 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 }
             }
             tip.hide();
-			
-            urls.jsonp('http://api.map.baidu.com/trace/v2/entity/list', params, sucCbk);
-
+            urls.get('static/data/trace.json', params, sucCbk);
         },
         // 实时监控加载数据
         loadData: function (pageIndex, before, after) {
-
             var me = this;
-            me._serviceId = me.getQueryString('i');
-            me._ak = me.getQueryString('k');
             curIndex = pageIndex;
-            params = {
-                ak: me._ak || Test_ak,
-                service_id: me._serviceId || ServiceId,
-                page_index: pageIndex,
-                page_size: pageSize
-            };
-
+            var params = {
+                traceId: me._trace_id,
+                ak: me._ak,
+                pageIndex: pageIndex,
+                pageSize: 14
+            }
             if (typeof keyWord == 'string' && keyWord.length > 0) {
-                params.entity_names = keyWord;
+                params.key = keyWord;
             }
             var time = new Date().setHours(0, 0, 0) / 1000;
             var before = before || function () {
@@ -1117,45 +980,28 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 $('.panel-mask').hide();
             };
             tip.hide();
-
-            urls.jsonp('http://api.map.baidu.com/trace/v2/entity/list', params, function (res) {
+            urls.get('static/data/list.json', params, function (res) {
                 if (res.status === 0) {
-                    me._service.size = res.total;
-                    traceName.html(me._service.name + '  (<span class="circle"></span>' + me.actives + '/' + res.total + ')');
-
-                    var _traces = [];
-                    var tracks;
-                    var realtimePoint;
-                    for (i in res.entities) {
-
-                        tracks = res.entities[i];
-                        realtimePoint = tracks.realtime_point;
-                        tracks.loc_time = realtimePoint.loc_time;
-                        tracks.location = realtimePoint.location;
-                        tracks.entity_name = tracks.entity_name;
-                        tracks.entity_name = tracks.entity_name;
-                        if (!realtimePoint.loc_time) {
-                            continue;
-                        }
-                        if (selectedTracks.hasOwnProperty(tracks.entity_name)) {
-                            tracks.checked = true;
+                    me._trace.size = res.total;
+                    traceName.html(me._trace.name + '  (<span class="circle"></span>' + me.actives + '/' + res.total + ')');
+                    me._trace.tracks = res.pois;
+                    for (i in me._trace.tracks) {
+                        if (selectedTracks.hasOwnProperty(me._trace.tracks[i].track_id)) {
+                            me._trace.tracks[i].checked = true;
                         } else {
-                            tracks.checked = false;
+                            me._trace.tracks[i].checked = false;
                         }
-                        if (tracks.loc_time < time) {
-                            tracks.state = 'off';
-                            tracks.stateTxt = '离线';
-                        } else if (tracks.loc_time > (new Date().getTime() / 1000) - 600) {
-                            tracks.state = 'on';
-                            tracks.stateTxt = '在线';
+                        if (me._trace.tracks[i].loc_time < time) {
+                            me._trace.tracks[i].state = 'off';
+                            me._trace.tracks[i].stateTxt = '离线';
+                        } else if (me._trace.tracks[i].loc_time > (new Date().getTime() / 1000) - 600) {
+                            me._trace.tracks[i].state = 'on';
+                            me._trace.tracks[i].stateTxt = '在线';
                         } else {
-                            tracks.state = 'leave';
-                            tracks.stateTxt = '暂停';
+                            me._trace.tracks[i].state = 'leave';
+                            me._trace.tracks[i].stateTxt = '暂停';
                         }
-                        tracks.entity_name = tracks.entity_name;
-                        _traces.push(tracks);
                     }
-                    me._service.tracks = _traces;
                     hasLoaded = true;
                     me.renderPanel();
                     if (type === 1) {
@@ -1168,27 +1014,19 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     }
                 }
             }, before, null, after);
-            
-
         },
         // 历史轨迹加载数据
         loadData_2: function (pageIndex, before, after) {
             var me = this;
-            var start_time = Util.js_strto_time(startTime);
-            me._serviceId = me.getQueryString('i');
-            me._ak = me.getQueryString('k');
-
             curIndex_2 = pageIndex;
-            params = {
-                ak: me._ak || Test_ak,
-                service_id: me._serviceId || ServiceId,
-                page_index: pageIndex,
-                page_size: 10,
-                active_time: start_time
-            };
-
+            var params = {
+                traceId: me._trace_id,
+                ak: me._ak,
+                pageIndex: pageIndex,
+                pageSize: 10
+            }
             if (typeof keyWord_2 == 'string' && keyWord_2.length > 0) {
-                params.entity_names = keyWord_2;
+                params.key = keyWord_2;
             }
             var time = new Date().setHours(0, 0, 0) / 1000;
             var before = before || function () {
@@ -1198,30 +1036,17 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 $('.panel-mask').hide();
             };
             tip.hide();
-
-            urls.jsonp('http://api.map.baidu.com/trace/v2/entity/list', params, function (res) {
+            urls.get('static/data/list.json', params, function (res) {
                 if (res.status === 0) {
-                    me._service.size = res.total;
-                    var tracks2 = [];
-                    var tracks;
-                    var realtimePoint;
-                    for (i in res.entities) {
-
-                        tracks = res.entities[i];
-                        realtimePoint = tracks.realtime_point;
-                        tracks.loc_time = realtimePoint.loc_time;
-                        tracks.location = realtimePoint.location;
-                        tracks.entity_name = tracks.entity_name;
-                        tracks.entity_name = tracks.entity_name;
-
-                        if (selectedTracks_2.hasOwnProperty(tracks.entity_name)) {
-                            tracks.checked = true;
+                    me._trace.size = res.total;
+                    me._trace.tracks_2 = res.pois;
+                    for (i in me._trace.tracks_2) {
+                        if (selectedTracks_2.hasOwnProperty(me._trace.tracks_2[i].track_id)) {
+                            me._trace.tracks_2[i].checked = true;
                         } else {
-                            tracks.checked = false;
+                            me._trace.tracks_2[i].checked = false;
                         }
-                        tracks2.push(tracks);
                     }
-                    me._service.tracks_2 = tracks2;
                     hasLoaded_2 = true;
                     me.renderSeledPanel();
                 } else {
@@ -1231,10 +1056,10 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             }, before, null, after);
         },
         // 实时监控模式下选择track 响应事件
-        selectTrack: function (entity_name, entity_name, state, setView, curIndex) {
-            var checkBox = $('#cbtest_' + entity_name);
+        selectTrack: function (track_id, track_name, state, setView) {
+            var checkBox = $('#cbtest_' + track_id);
             var me = this;
-            if (!selectedTracks.hasOwnProperty(entity_name)) {
+            if (!selectedTracks.hasOwnProperty(track_id)) {
                 if (size === 10) {
                     tip.html(message['9999']);
                     tip.show();
@@ -1244,10 +1069,10 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     return;
                 }
                 checkBox.attr("checked", "checked");
-                var track = trackModule.createTrack(this._service_id || ServiceId, this._ak || Test_ak, entity_name, entity_name, pageSize, curIndex);
+                var track = trackModule.createTrack(this._trace_id, this._ak, track_id, track_name);
                 track.setChecked(true);
                 track.setState(state);
-                selectedTracks[entity_name] = track;
+                selectedTracks[track_id] = track;
                 curTrack = track;
                 selectedTrackArray.splice(0, 0, track);
                 var cbk = null;
@@ -1258,6 +1083,7 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                         } else {
                             track.map.centerAndZoom(track.point, 13);
                         }
+
                     }
                 } else {
                     cbk = function () {
@@ -1275,13 +1101,13 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 track.getPoi(cbk);
                 size++;
             } else {
-                if (curTrack.entity_name == entity_name) {
+                if (curTrack.track_id == track_id) {
                     curTrack = null;
                     drawer.hoverLayer.clearAll();
                 }
-                selectedTracks[entity_name].dispose();
-                selectedTrackArray.splice(selectedTrackArray.indexOf(selectedTracks[entity_name]), 1);
-                delete selectedTracks[entity_name];
+                selectedTracks[track_id].dispose();
+                selectedTrackArray.splice(selectedTrackArray.indexOf(selectedTracks[track_id]), 1);
+                delete selectedTracks[track_id];
                 size--;
                 checkBox.attr("checked", false);
                 if (setView) {
@@ -1293,10 +1119,10 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
             }
         },
         // 历史轨迹模式下选择track 响应事件
-        selectTrack_2: function (entity_name, entity_name, del) {
-            var checkBox = $('#cbtest2_' + entity_name);
+        selectTrack_2: function (track_id, track_name, del) {
+            var checkBox = $('#cbtest2_' + track_id);
             var me = this;
-            if (!selectedTracks_2.hasOwnProperty(entity_name)) {
+            if (!selectedTracks_2.hasOwnProperty(track_id)) {
                 if (size_2 === 10) {
                     tip.html(message['9999']);
                     tip.show();
@@ -1306,9 +1132,9 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     return;
                 }
                 checkBox.attr("checked", "checked");
-                var track = trackModule.createTrack(this._service_id || ServiceId, this._ak || Test_ak, entity_name, entity_name, 10, curIndex);
+                var track = trackModule.createTrack(this._trace_id, this._ak, track_id, track_name);
                 track.setChecked(true);
-                selectedTracks_2[entity_name] = track;
+                selectedTracks_2[track_id] = track;
                 selectedTrackArray_2.splice(0, 0, track);
                 size_2++;
                 if (chechSelectedTracks_2) {
@@ -1316,9 +1142,9 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                 }
             } else {
                 if (del) {
-                    selectedTracks_2[entity_name].dispose();
-                    selectedTrackArray_2.splice(selectedTrackArray_2.indexOf(selectedTracks_2[entity_name]), 1);
-                    delete selectedTracks_2[entity_name];
+                    selectedTracks_2[track_id].dispose();
+                    selectedTrackArray_2.splice(selectedTrackArray_2.indexOf(selectedTracks_2[track_id]), 1);
+                    delete selectedTracks_2[track_id];
                     size_2--;
                     checkBox.attr("checked", false);
                     if (chechSelectedTracks_2) {
@@ -1364,94 +1190,96 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
         },
         renderPanel: function () {
             var me = this;
-            if (me._service && me._service.tracks) {
+            if (me._trace && me._trace.tracks) {
                 var obj = {};
-                obj.size = me._service.tracks.length;
-                obj.trackList = me._service.tracks;
+                obj.size = me._trace.tracks.length;
+                obj.trackList = me._trace.tracks;
                 var html = tracklistTmpl(obj);
                 trackListPanel.html(html);
-                me.pagination(me._service.size);
+                me.pagination(me._trace.size);
             }
 
         },
         renderSeledPanel: function () {
             var me = this;
-            if (me._service && me._service.tracks_2) {
+            if (me._trace && me._trace.tracks_2) {
                 var obj = {};
-                obj.size = me._service.tracks_2.length;
-                obj.trackList = me._service.tracks_2;
+                obj.size = me._trace.tracks_2.length;
+                obj.trackList = me._trace.tracks_2;
                 var html = selTrackListTmpl(obj);
                 selTracksPanel.html(html);
-                me.pagination_2(me._service.size);
+                me.pagination_2(me._trace.size);
                 me.loadTrackHistory();
             }
         },
-        formatHistoryPoints: function (res) {
-            var points = res.points;
-            var poidata = [];
-            var temp;
-            for (var i = 0, l = points.length; i < l; i++) {
-                temp = points[i].location.concat(points[i].loc_time);
-                poidata.push(temp);
-            }
-            res.pois = poidata;
-            return res;
-        },
         loadTrackHistory: function () {
             var me = this;
-            me._serviceId = me.getQueryString('i');
-            me._ak = me.getQueryString('k');
-            for (var k = 0, l = me._service.tracks_2.length; k < l; k++) {
-                var li = $('#seled-track-' + me._service.tracks_2[k].entity_name);
+            for (var k = 0, l = me._trace.tracks_2.length; k < l; k++) {
+                var li = $('#seled-track-' + me._trace.tracks_2[k].track_id);
                 var start_time = Util.js_strto_time(startTime);
                 var end_time = Util.js_strto_time(endTime);
-                
+                var params = {
+                    traceId: me._trace_id,
+                    ak: me._ak,
+                    ids: me._trace.tracks_2[k].track_id,
+                    start_time: start_time,
+                    end_time: end_time,
+                    is_processed: is_processed
+                }
                 var cbks = {
                     success: function (res) {
-                        res = me.formatHistoryPoints(res);
-                        var entity_name = res.entity_name;
-                        var history = res;
-                        var li = $('#seled-track-' + entity_name);
+                        var track_id;
+                        for (d in res) {
+                            track_id = d;
+                        }
+                        var history = res[track_id];
+                        var li = $('#seled-track-' + track_id);
                         li.find('.pro-bar').removeClass('progressing');
                         if (!history.pois || history.pois.length === 0) {
                             li.find('.pro-bar').css('width', '0px');
                             return;
                         }
                         var activeTime = me.calculate(history.pois);
-
-                        if (activeTime == 0) {
-                            li.find('.pro-bar').css('width', '0px');
-                        } else if (activeTime <= 1 * 60 * 60) {
+                        // 根据track的活跃度设置进度条长度
+                        if (activeTime <= 1 * 60 * 60) {
                             li.find('.pro-bar').css('width', '10px');
-                        } else if ((activeTime > 1 * 60 * 60) && (activeTime <= 2 * 60 * 60)) {
+                        }
+                        if ((activeTime > 1 * 60 * 60) && (activeTime <= 2 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '20px');
-                        } else if ((activeTime > 2 * 60 * 60) && (activeTime <= 3 * 60 * 60)) {
+                        }
+                        if ((activeTime > 2 * 60 * 60) && (activeTime <= 3 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '30px');
-                        } else if ((activeTime > 3 * 60 * 60) && (activeTime <= 4 * 60 * 60)) {
+                        }
+                        if ((activeTime > 3 * 60 * 60) && (activeTime <= 4 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '40px');
-                        } else if ((activeTime > 4 * 60 * 60) && (activeTime <= 5 * 60 * 60)) {
+                        }
+                        if ((activeTime > 4 * 60 * 60) && (activeTime <= 5 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '50px');
-                        } else if ((activeTime > 5 * 60 * 60) && (activeTime <= 6 * 60 * 60)) {
+                        }
+                        if ((activeTime > 5 * 60 * 60) && (activeTime <= 6 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '60px');
-                        } else if ((activeTime > 6 * 60 * 60) && (activeTime <= 7 * 60 * 60)) {
+                        }
+                        if ((activeTime > 6 * 60 * 60) && (activeTime <= 7 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '70px');
-                        } else if ((activeTime > 7 * 60 * 60) && (activeTime <= 8 * 60 * 60)) {
+                        }
+                        if ((activeTime > 7 * 60 * 60) && (activeTime <= 8 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '80px');
-                        } else if ((activeTime > 8 * 60 * 60) && (activeTime <= 9 * 60 * 60)) {
+                        }
+                        if ((activeTime > 8 * 60 * 60) && (activeTime <= 9 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '90px');
-                        } else if ((activeTime > 9 * 60 * 60) && (activeTime <= 10 * 60 * 60)) {
+                        }
+                        if ((activeTime > 9 * 60 * 60) && (activeTime <= 10 * 60 * 60)) {
                             li.find('.pro-bar').css('width', '100px');
-                        } else if (activeTime > 10 * 60 * 60) {
+                        }
+                        if (activeTime > 10 * 60 * 60) {
                             li.find('.pro-bar').css('width', '110px');
                         }
-
-                         if (selectedTracks_2.hasOwnProperty(entity_name)) {
-                            li.find('.pro-bar').css('background-color', _colors[entity_name]);
+                        if (selectedTracks_2.hasOwnProperty(track_id)) {
+                            li.find('.pro-bar').css('background-color', _colors[track_id]);
                         } else {
                             var color = me.pickColor();
-                            _colors[entity_name] = color;
+                            _colors[track_id] = color;
                         }
-
                     },
                     before: function () {
                         li.find('.pro-bar').css('width', '110px').addClass('progressing');
@@ -1459,24 +1287,9 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     after: function () {
                     }
                 };
-
-                var params = {
-                    is_processed: is_processed,
-
-                    ak: me._ak || Test_ak,
-                    service_id: me._serviceId || ServiceId,
-                    start_time: start_time,
-                    end_time: end_time,
-                    entity_name: me._service.tracks_2[k].entity_name,
-                    active_time: start_time
-                }
-
-                urls.jsonp('http://api.map.baidu.com/trace/v2/track/gethistory', params, cbks.success, cbks.before, cbks.fail, cbks.after);
-
-                // this.getHistoryData('http://api.map.baidu.com/trace/v2/track/gethistory', params, cbks.success, cbks.before, cbks.fail, cbks.after);
+                urls.get('static/data/' + me._trace.tracks_2[k].track_id + '.json', params, cbks.success, cbks.before, cbks.fail, cbks.after);
             }
         },
-        
         // 根据历史轨迹点计算活跃度(计算活跃时长)
         calculate: function (pois) {
             var activeTime = 0;
@@ -1525,7 +1338,6 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     current_page: curIndex_2 - 1,
                     prev_text: "<<",
                     callback: function (curIndex) {
-                        console.log('---- curIndex', curIndex);
                         me.loadData_2(curIndex + 1);
                     }
                 };
@@ -1680,14 +1492,14 @@ define('track/demo', ['track/urls', 'track/message', 'track/track', 'track/draw'
                     continue;
                 }
                 var l = {
-                    name: track.entity_name,
+                    name: track.track_name,
                     textStyle: {
                         color: track.colors[0]
                     }
                 }
                 option.legend.data.push(l);
                 var data = {
-                    name: track.entity_name,
+                    name: track.track_name,
                     type: 'line',
                     data: xData,
                     itemStyle: {
@@ -1745,19 +1557,17 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         if (arguments.length < 3) {
             return null;
         }
-        this._service_id = arguments[0];
+        this._trace_id = arguments[0];
         this._ak = arguments[1];
-        this.entity_name = arguments[2];
-        this.entity_name = arguments[3];
-        this.page_size = arguments[4];
-        this.page_index = arguments[5];
+        this.track_id = arguments[2];
+        this.track_name = arguments[3];
         this._version = 2;
         this.poi = null;
         this.map = window.map || new BMap.Map("mapContainer");
         this.drawer = drawModule.init();
         this._track_layer = new CanvasLayer({
             map: this.map,
-            id: '_layer_' + this.entity_name
+            id: '_layer_' + this.track_id
         });
         this._track_layer.addEventListener('draw', function () {
             me.redraw();
@@ -1798,54 +1608,23 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         }
         return false;
     }
-    Track.prototype.getQueryString = function (name) {
-        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
-        var r = window.location.search.substr(1).match(reg);
-        if (r !== null) return (this.xssFilter(r[2]));
-        return null;
-    };
-    Track.prototype.xssFilter = function (s) {
-        var pattern = new RegExp("[%--`~!@#$^&*()=|{}':;',\\[\\].<>/?~！@#￥……&*（）——|{}【】‘；：”“'。，、？]") //格式 RegExp("[在中间定义特殊过滤字符]")
-        var rs = "";
-        for (var i = 0; i < s.length; i++) {
-            rs = rs + s.substr(i, 1).replace(pattern, '');
-        }
-        return rs;
-    };
     // 获取track最新轨迹点 POI
     Track.prototype.getPoi = function (callback) {
         var me = this;
-        var pagesize = me.page_size;
-        var pageIndex = me.page_index;
         var time = new Date().setHours(0, 0, 0) / 1000;
-        me._serviceId = me.getQueryString('i');
-        me._ak = me.getQueryString('k');
-
         var params = {
-            ak: me._ak || Test_ak,
-            service_id: me._serviceId || ServiceId,
-            page_size: pagesize,
-            page_index: pageIndex
-        };
-        console.log(params);
-        urls.jsonp('http://api.map.baidu.com/trace/v2/entity/list', params, function (res) {
-            var tracks;
-            var realtimePoint;
+            traceId: me._trace_id,
+            ak: me._ak,
+            track_id: me.track_id,
+            version: me._version
+        }
+        urls.get('static/data/list.json', params, function (res) {
             if (res.status === 0) {
-                var pois = res.entities;
-                for (var k = 0, l = pois.length; k < l; k++) {
-                    tracks = pois[k];
-                    realtimePoint = tracks.realtime_point;
-                    tracks.loc_time = realtimePoint.loc_time;
-                    tracks.location = realtimePoint.location;
-                    tracks.entity_name = tracks.entity_name;
-                    if (tracks.entity_name == me.entity_name) {
-                        me.poi = tracks;
-                        console.log('equ::', tracks.entity_name, me.entity_name);
+                for (var k = 0, l = res.pois.length; k < l; k++) {
+                    if (res.pois[k].track_id == me.track_id) {
+                        me.poi = res.pois[k];
                     }
                 }
-                console.log('poi:', me.entity_name, res, me.poi);
-
                 if (me.poi.loc_time < time) {
                     me.setState('off');
                 } else if (me.poi.loc_time > (new Date().getTime() / 1000) - 600) {
@@ -1859,9 +1638,7 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
             if (callback) {
                 callback.call(me);
             }
-        });
-
-
+        })
     }
     // track 绘制POI动画 为了性能 没有启动动画 可以忽略
     Track.prototype.drawPoiAnimation = function () {
@@ -1879,7 +1656,6 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         if (!this.poi) {
             return;
         }
-        //this.drawer.drawAttr(this.poi, this.drawer.drawObj.hoverCtx);
         this.drawer.drawPoint(this.point, this._ctx, {
             color: this.colors[0]
         });
@@ -1909,15 +1685,6 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
                         title: index,
                         color: 'rgba(245,67,54,0.8)'
                     });
-                } else {
-                    this.drawer.drawExtremePoint(this.travels[i][0], {
-                        title: index,
-                        color: 'rgba(98,181,0,0.8)'
-                    });
-                    this.drawer.drawExtremePoint(this.travels[i][this.travels[i].length - 1], {
-                        title: index,
-                        color: 'rgba(245,67,54,0.8)'
-                    });
                 }
             } else {
                 var point = new BMap.Point(this.travels[i][0][0], this.travels[i][0][1]);
@@ -1931,90 +1698,22 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
     // 获取track的历史轨迹信息
     Track.prototype.getHistory = function () {
         var me = this;
-        me._serviceId = me.getQueryString('i');
-        me._ak = me.getQueryString('k');
         var cbks = arguments[2] || {};
-        var is_processed = arguments[3] || 0;
-
+        var is_processed = arguments[3] || false;
         var params = {
-            is_processed: is_processed,
-            ak: me._ak || Test_ak,
-            service_id: me._serviceId || ServiceId,
+            traceId: me._trace_id,
+            ak: me._ak,
+            ids: me.track_id,
             start_time: arguments[0],
             end_time: arguments[1],
-            entity_name: me.entity_name
+            is_processed: is_processed
         }
-
-        // urls.jsonp('http://api.map.baidu.com/trace/v2/track/gethistory', params, cbks.success, cbks.before, cbks.fail, cbks.after);
-        this.getHistoryData('http://api.map.baidu.com/trace/v2/track/gethistory', params, cbks.success, cbks.before, cbks.fail, cbks.after);
-    };
-
-    Track.prototype.getHistoryData = function (url, params, success, before, fail, after) {
-        var page_size = 1000;
-        var page_index = 1;
-        var totalPage = 0;
-        var points = [];
-
-        var getdata = function () {
-            $.extend(params, {page_size: page_size, page_index: page_index});
-            console.log(page_index, totalPage);
-            urls.jsonp(url, params,function (data) {
-                if (data.status != 0) {
-                    return;
-                }
-                points = points.concat(data.points);
-                if (page_index <= 1) {
-                    var total = data.total;
-                    totalPage = Math.ceil(total/page_size);
-                }
-                if (page_index >= totalPage) {
-                    data.points = points;
-                    success(data);
-                    return;
-                }
-
-                page_index += 1;
-                getdata();
-
-            },fail,after)
-        };
-
-        getdata();
-        
-    };
+        urls.get('static/data/' + me.track_id + '.json', params, cbks.success, cbks.before, cbks.fail, cbks.after);
+    }
     // track历史轨迹 预处理行程化 按照轨迹点时间进行切分 将轨迹点切分成一条条行程
     Track.prototype.initTravels = function () {
         this.travels = [];
-        this.process_travels = [];
         this.activeTimes = 0;
-        // 纠偏过后的数据 现在可以不用管
-        if (this.process_pois && this.process_pois.length > 0) {
-            var preTime1 = this.process_pois[this.process_pois.length - 1][2];
-            var diffTime1 = 0;
-            // 倒序处理
-            var tmpTravel1 = [];
-            for (var i = this.process_pois.length - 1; i >= 0; i--) {
-                var locTime1 = this.process_pois[i][2];
-                diffTime1 = locTime1 - preTime1;
-                // 两点之间相隔10分钟 进行分段处理
-                if (!(diffTime1 < 600)) {
-                    this.travels.push(tmpTravel);
-                    var l = tmpTravel.length;
-                    if (l > 1) {
-                        // track的活跃时间
-                        this.activeTimes = this.activeTimes + (tmpTravel[l - 1][2] - tmpTravel[0][2]);
-                    }
-                    tmpTravel = [];
-                }
-                if (checkLngLat(this.process_pois[i][0], this.process_pois[i][1])) {
-                    tmpTravel1.push(this.process_pois[i]);
-                }
-                preTime1 = locTime1;
-            };
-            if (tmpTravel1.length > 0) {
-                this.process_travels.push(tmpTravel1);
-            }
-        }
         if (this.pois && this.pois.length > 0) {
             var preTime = this.pois[this.pois.length - 1][2];
             var diffTime = 0;
@@ -2045,17 +1744,6 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         if (this.pois && this.pois.length > 0) {
             for (var i = 0; i < this.pois.length; i++) {
                 var pt = new BMap.Point(this.pois[i][0], this.pois[i][1]);
-                this.bPoints.push(pt);
-            };
-            var fitView = this.map.getViewport(this.bPoints, {
-                margins: [10, 10, 10, 10]
-            });
-            this.map.setViewport(fitView);
-            return;
-        }
-        if (this.process_pois && this.process_pois.length > 0) {
-            for (var i = 0; i < this.process_pois.length; i++) {
-                var pt = new BMap.Point(this.process_pois[i][0], this.process_pois[i][1]);
                 this.bPoints.push(pt);
             };
             var fitView = this.map.getViewport(this.bPoints, {
@@ -2117,7 +1805,7 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         if (!this.aniLayer) {
             this.aniLayer = new CanvasLayer({
                 map: this.map,
-                id: '_anilayer_' + this.entity_name
+                id: '_anilayer_' + this.track_id
             });
             this.aniLayer.addEventListener('draw', function () {
                 me.drawHistoryPoi();
@@ -2171,22 +1859,21 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         // 间隔 25秒更新一次
         me.timer = setInterval(function () {
             var params = {
-                service_id: me._service_id || ServiceId,
-                ak: me._ak || Test_ak,
-                entity_names: me.entity_name
+                traceId: me._trace_id,
+                ak: me._ak,
+                track_id: me.track_id,
+                version: me._version
             }
-
-            urls.jsonp('http://api.map.baidu.com/trace/v2/entity/list', params, function (res) {
-                
+            urls.get(urls.trackDetail, params, function (res) {
                 if (res && res.status === 0) {
-                    var entiData = res.entities[0];
                     // 实时点没有更新
-                    if (me.poi.loc_time === entiData.realtime_point.loc_time) {
+                    if (me.poi.loc_time === res.poi.loc_time) {
                         // me.poiAnimation.restart();
                         return;
                     }
-                    me.poi = entiData;
-                    me.point = new BMap.Point(me.poi.realtime_point.location[0], me.poi.realtime_point.location[1]);
+                    // 模拟动画测试
+                    me.poi = res.poi;
+                    me.point = new BMap.Point(me.poi.location[0], me.poi.location[1]);
                     me.tmpPoints.push(me.point);
                     if (me.tmpPoints.length > 100) {
                         me.tmpPoints.splice(0, 1);
@@ -2242,17 +1929,11 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
         }
     }
     var trackModule = {
-        createTrack: function (trace_id, ak, entity_name, entity_name, pageSize, pageIndex) {
-            if (!pageSize) {
-                pageSize = 14;
-            }
-            return new Track(trace_id, ak, entity_name, entity_name, pageSize, pageIndex);
+        createTrack: function (trace_id, ak, track_id, track_name) {
+            return new Track(trace_id, ak, track_id, track_name);
         },
-        loadTrackHistory: function (track, startTime, endTime, callbacks, is_processed, pageSize, pageIndex) {
-            if (!pageSize) {
-                pageSize = 10;
-            }
-            track.getHistory(startTime, endTime, callbacks, is_processed, pageSize, pageIndex);
+        loadTrackHistory: function (track, startTime, endTime, callbacks, is_processed) {
+            track.getHistory(startTime, endTime, callbacks, is_processed);
         }
     }
     return trackModule;
@@ -2261,10 +1942,15 @@ define('track/track', ['track/urls', 'track/draw', 'track/canvasLayer', 'track/u
 define('track/draw', ['track/canvas', 'track/animation', 'track/util'], function (CanvasModule, AnimationModule, Util) {
     return {
         init: function () {
+            // 分层绘制提高效率
             this.canvasLayer = CanvasModule.init();
+            // 动画图层
             this.animationLayer = CanvasModule.initAnimationLayer();
+            // 浮动图层 主要绘制track的属性信息
             this.hoverLayer = CanvasModule.initHoverLayer();
+            // 历史轨迹线图层
             this.lineCanvasLayer = CanvasModule.initLineCanvasLayer();
+            // 画笔对象
             this.drawObj = CanvasModule.getDrawingObj();
             this.map = CanvasModule.map;
             return this;
@@ -2276,7 +1962,7 @@ define('track/draw', ['track/canvas', 'track/animation', 'track/util'], function
             var props = {
                 locTime: poi.loc_time,
                 location: poi.location,
-                name: poi.entity_name
+                name: poi.track_name
             }
             var txt1 = props.name;
             var txt2_1 = '最新位置 :  经度  ( ' + props.location[0].toFixed(6) + ' )';
@@ -2616,7 +2302,7 @@ define('track/canvas', ['track/canvasLayer'], function (CanvasLayer) {
 define('track/animation', ['track/canvas'], function (CanvasModule) {
     var guid = 0;
     var cacheCtx = null;
-
+    // 缓存canvas 离屏绘制
     function createCacheImage(width, height) {
         var cacheCanvas = document.createElement('canvas');
         cacheCanvas.width = width;
@@ -2687,6 +2373,7 @@ define('track/animation', ['track/canvas'], function (CanvasModule) {
         this.running = false;
         timeline.remove(this);
     }
+    // 动画 时间 控制器
     var timeline = {
         clips: {},
         animationSize: 0,
